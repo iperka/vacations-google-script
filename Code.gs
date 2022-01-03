@@ -6,16 +6,43 @@
  *
  * IMPORTANT: If the example value ends with a slash be sure to add one to your value too.
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @author Michael Beutler
  */
+
+/**
+ * If set to true the script will replace and update existing events.
+ */
 const REPLACE = true;
+
+/**
+ * Must be set to true in order to create events.
+ */
 const IS_ACTIVE = false;
-const CALENDAR_ID = "you@gmail.com";
-const AUTH0_DOMAIN = "https://iperka.eu.auth0.com";
-const AUTH0_AUDIENCE = "https://api.iperka.com/vacations/";
-const AUTH0_CLIENT_ID = "";
-const AUTH0_CLIENT_SECRET = "";
+
+/**
+ * If set to false the calendar events will be called as the vacations API name suggests.
+ * When assigned a string, all vacations will be named equally to the string.
+ */
+const OVERRIDE_SUMMARY = "Vacations";
+
+/**
+ * Your email to receive notifications.
+ */
+const REPORT_EMAIL = "MY_EMAIL";
+
+/**
+ * Google Calendar ID, this is usually your email address.
+ */
+const CALENDAR_ID = "MY_CALENDAR_ID";
+
+/**
+ * Auth0 Properties.
+ */
+const AUTH0_DOMAIN = "MY_AUTH0_DOMAIN";
+const AUTH0_AUDIENCE = "MY_AUTH0_AUDIENCE";
+const AUTH0_CLIENT_ID = "MY_CLIENT_ID";
+const AUTH0_CLIENT_SECRET = "MY_CLIENT_SECRET";
 
 const URL = "https://api.vacations.iperka.com/v1/vacations/";
 
@@ -24,6 +51,10 @@ function main() {
   let hasNextPage = false;
   do {
     const vacations = accessProtectedResource(URL + `?page=${page}`);
+    if (vacations === null) {
+      hasNextPage = false;
+      continue;
+    }
     Logger.log(
       `Fetching page ${page + 1} out of ${vacations.metadata.totalPages}...`
     );
@@ -35,7 +66,7 @@ function main() {
 
     const events = vacations.data.map((vacation) => ({
       id: toRFC2938(vacation.uuid),
-      summary: vacation.name,
+      summary: OVERRIDE_SUMMARY ? OVERRIDE_SUMMARY : vacation.name,
       start: new Date(vacation.startDate),
       end: new Date(vacation.endDate),
       status: getStatus(vacation.status),
@@ -207,6 +238,16 @@ function accessProtectedResource(url, method_opt, headers_opt) {
       "Open the following URL and re-run the script: %s",
       service.getAuthorizationUrl()
     );
+    GmailApp.sendEmail(
+      REPORT_EMAIL,
+      `Authentication required.`,
+      `Vacations syncronization failed due to missing authentication.\nPlease visit the following link to authenticate.\n${service.getAuthorizationUrl()}`,
+      {
+        noReply: true,
+        htmlBody: `Vacations syncronization failed due to missing authentication.<br />Please visit the following link to authenticate.<br /><a href="${service.getAuthorizationUrl()}">Authenticate</a>`,
+      }
+    );
+    return null;
   }
 }
 
